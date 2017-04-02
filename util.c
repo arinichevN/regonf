@@ -238,17 +238,18 @@ void printAll(ProgList *list, PeerList *pl) {
     sendStr(q, &crc);
     snprintf(q, sizeof q, "prog_list length: %d\n", list->length);
     sendStr(q, &crc);
-    sendStr("+-----------------------------------------------------------------------------------------------------------+\n", &crc);
-    sendStr("|                                                Program                                                    |\n", &crc);
-    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
-    sendStr("|    id     |    goal   |   delta   | change_gap|change_rest|   state   |  state_r  | out_heater| out_cooler|\n", &crc);
-    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
+    sendStr("+-----------------------------------------------------------------------------------------------------------------------+\n", &crc);
+    sendStr("|                                                      Program                                                          |\n", &crc);
+    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
+    sendStr("|    id     |    goal   |   delta   | change_gap|change_rest|   state   |  state_r  | state_onf | out_heater| out_cooler|\n", &crc);
+    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
     PROG_LIST_LOOP_DF
     PROG_LIST_LOOP_ST
             char *state = getStateStr(curr->state);
     char *state_r = getStateStr(curr->state_r);
+    char *state_onf = getStateStr(curr->state_onf);
     struct timespec tm1 = getTimeRestChange(curr);
-    snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11.3f|%11.3f|\n",
+    snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11s|%11.3f|%11.3f|\n",
             curr->id,
             curr->goal,
             curr->delta,
@@ -256,12 +257,13 @@ void printAll(ProgList *list, PeerList *pl) {
             tm1.tv_sec,
             state,
             state_r,
+            state_onf,
             curr->output_heater,
             curr->output_cooler
             );
     sendStr(q, &crc);
     PROG_LIST_LOOP_SP
-    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
+    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
 
     sendStr("+-------------------------------------------------------------------------------------+\n", &crc);
     sendStr("|                                       Peer                                          |\n", &crc);

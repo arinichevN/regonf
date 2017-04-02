@@ -685,20 +685,6 @@ void progControl(Prog *item) {
                         em_other = &item->em_h;
                         break;
                 }
-
-                item->output = 0.0f;
-                switch (item->state_r) {
-                    case HEATER:
-                        if (SNSR_VAL < item->goal - item->delta) {
-                            item->output = em->pwm_rsl;
-                        }
-                        break;
-                    case COOLER:
-                        if (SNSR_VAL > item->goal + item->delta) {
-                            item->output = em->pwm_rsl;
-                        }
-                        break;
-                }
                 switch (item->state_onf) {
                     case DO:
                         switch (item->state_r) {
@@ -775,7 +761,6 @@ void progControl(Prog *item) {
             break;
         case OFF:
             break;
-
         default:
             item->state = INIT;
             break;
