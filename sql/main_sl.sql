@@ -4,11 +4,13 @@ CREATE TABLE "prog"
   "id" INTEGER PRIMARY KEY,
   "description" TEXT NOT NULL,
   "sensor_id" INTEGER NOT NULL,
-  "em_heater_id" INTEGER NOT NULL,
-  "em_cooler_id" INTEGER NOT NULL,
   "goal" REAL NOT NULL,
-  "delta" REAL NOT NULL,
   "change_gap" INTEGER NOT NULL,--time from regsmp.gap for switching EM (heater or cooler)
+  "em_mode" TEXT NOT NULL,--cooler or heater or both
+  "heater_em_id" INTEGER NOT NULL,
+  "heater_delta" REAL NOT NULL,
+  "cooler_em_id" INTEGER NOT NULL,
+  "cooler_delta" REAL NOT NULL,
   "enable" INTEGER NOT NULL,
   "load" INTEGER NOT NULL
 );

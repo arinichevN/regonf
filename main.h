@@ -11,6 +11,7 @@
 #include "lib/configl.h"
 #include "lib/timef.h"
 #include "lib/udp.h"
+#include "lib/regonfhc.h"
 #include "lib/acp/main.h"
 #include "lib/acp/app.h"
 #include "lib/acp/regonf.h"
@@ -27,56 +28,24 @@
 #endif
 #define CONFIG_FILE "" CONF_DIR "config.tsv"
 
-#define PROG_FIELDS "id,sensor_id,em_heater_id,em_cooler_id,goal,delta,change_gap,enable,load"
+#define PROG_FIELDS "id,sensor_id,heater_em_id,em_mode,cooler_em_id,goal,heater_delta,cooler_delta,change_gap,enable,load"
 
 #define WAIT_RESP_TIMEOUT 3
-#define LOCK_COM_INTERVAL 1000000U
 
 #define MODE_PID_STR "pid"
 #define MODE_ONF_STR "onf"
 #define MODE_SIZE 3
-#define SNSRF_COUNT_MAX 7
+
+#define FLOAT_NUM "%.1f"
+
 
 #define PROG_LIST_LOOP_DF Prog *curr = prog_list.top;
 #define PROG_LIST_LOOP_ST while (curr != NULL) {
 #define PROG_LIST_LOOP_SP curr = curr->next; } curr = prog_list.top;
 
-#define SNSR_VAL item->sensor.value.value
-#define SNSR_TM item->sensor.value.tm
-
-#define VAL_IS_OUT_H SNSR_VAL > item->goal + item->delta
-#define VAL_IS_OUT_C SNSR_VAL < item->goal - item->delta
-
-enum {
-    OFF,
-    INIT,
-    DO,
-    DISABLE,
-    WAIT,
-    REG,
-    NOREG,
-    COOLER,
-    HEATER
-} StateAPP;
-
 struct prog_st {
     int id;
-    SensorFTS sensor;
-    EM em_c;
-    EM em_h;
-    float goal;
-    float delta;
-    struct timespec change_gap;
-
-    char state;
-    char state_r;
-    char state_onf;
-    float output;
-    int snsrf_count;
-
-    float output_heater;
-    float output_cooler;
-    Ton_ts tmr;
+    RegOnfHC reg;
     Mutex mutex;
     struct prog_st *next;
 };

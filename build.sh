@@ -7,15 +7,6 @@ CONF_DIR=/etc/controller
 CONF_DIR_APP=$CONF_DIR/$APP
 PID_DIR=/var/run
 
-#lubuntu armbian
-#PSQL_I_DIR=-I/usr/include/postgresql
-#xubuntu
-#PSQL_I_DIR=-I/opt/PostgreSQL/9.5/include 
-
-#PSQL_L_DIR=-L/opt/PostgreSQL/9.5/lib
-#armbian
-#PSQL_L_DIR=-L/usr/lib/arm-linux-gnueabihf
-
 MODE_DEBUG=-DMODE_DEBUG
 MODE_FULL=-DMODE_FULL
 
@@ -67,17 +58,16 @@ function build_lib {
 	gcc $1 $PLATFORM -c timef.c && \
 	gcc $1 $PLATFORM -c udp.c && \
 	gcc $1 $PLATFORM -c util.c && \
+	gcc $1 $PLATFORM -c regonfhc.c && \
 	cd acp && \
 	gcc $1 $PLATFORM -c main.c && \
 	cd ../ && \
 	echo "library: making archive..." && \
 	rm -f libpac.a
-	ar -crv libpac.a app.o crc.o dbl.o gpio.o timef.o udp.o util.o configl.o acp/main.o && echo "library: done"
+	ar -crv libpac.a app.o crc.o dbl.o gpio.o timef.o udp.o util.o configl.o regonfhc.o acp/main.o && echo "library: done"
 	rm -f *.o acp/*.o
 }
 
-#    1         2
-#debug_mode bin_name
 function build {
 	cd lib && \
 	build_lib $1 && \

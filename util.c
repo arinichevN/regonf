@@ -64,22 +64,10 @@ int unlockProg(Prog *item) {
     return 1;
 }
 
-int sensorRead(SensorFTS *item) {
-    return acp_readSensorFTS(item, sock_buf_size);
-}
-
-int controlEM(EM *item, float output) {
-    if (item == NULL) {
-        return 0;
-    }
-    return acp_setEMDutyCycleR(item, output, sock_buf_size);
-}
-
 void secure() {
     PROG_LIST_LOOP_DF
     PROG_LIST_LOOP_ST
-    controlEM(&curr->em_h, 0.0f);
-    controlEM(&curr->em_c, 0.0f);
+    regonfhc_turnOff(&curr->reg);
     PROG_LIST_LOOP_SP
 }
 
@@ -112,57 +100,23 @@ int checkEM(const EMList *list) {
 }
 
 struct timespec getTimeRestChange(const Prog *item) {
-    return getTimeRestTmr(item->change_gap, item->tmr);
-}
-
-char * getStateStr(char state) {
-    switch (state) {
-        case OFF:
-            return "OFF";
-            break;
-        case INIT:
-            return "INIT";
-            break;
-        case DO:
-            return "DO";
-            break;
-        case WAIT:
-            return "WAIT";
-            break;
-        case REG:
-            return "REG";
-            break;
-        case NOREG:
-            return "NOREG";
-            break;
-        case COOLER:
-            return "COOLER";
-            break;
-        case HEATER:
-            return "HEATER";
-            break;
-            break;
-        case DISABLE:
-            return "DISABLE";
-            break;
-    }
-    return "\0";
+    return getTimeRestTmr(item->reg.change_gap, item->reg.tmr);
 }
 
 int bufCatProgRuntime(const Prog *item, char *buf, size_t buf_size) {
     char q[LINE_SIZE];
-    char *state = getStateStr(item->state);
-    char *state_r = getStateStr(item->state_r);
+    char *state = reg_getStateStr(item->reg.state);
+    char *state_r = reg_getStateStr(item->reg.state_r);
     struct timespec tm_rest = getTimeRestChange(item);
-    snprintf(q, sizeof q, "%d_%s_%s_%f_%f_%ld_%f_%d\n",
+    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR,
             item->id,
             state,
             state_r,
-            item->output_heater,
-            item->output_cooler,
+            item->reg.heater.output,
+            item->reg.cooler.output,
             tm_rest.tv_sec,
-            item->sensor.value.value,
-            item->sensor.value.state
+            item->reg.sensor.value.value,
+            item->reg.sensor.value.state
             );
     if (bufCat(buf, q, buf_size) == NULL) {
         return 0;
@@ -172,12 +126,16 @@ int bufCatProgRuntime(const Prog *item, char *buf, size_t buf_size) {
 
 int bufCatProgInit(const Prog *item, char *buf, size_t buf_size) {
     char q[LINE_SIZE];
-    struct timespec tm_rest = getTimeRestChange(item);
-    snprintf(q, sizeof q, "%d_%f_%f_%ld\n",
+    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_ROW_STR,
             item->id,
-            item->goal,
-            item->delta,
-            item->change_gap.tv_sec
+            item->reg.change_gap.tv_sec,
+            item->reg.goal,
+            item->reg.heater.use,
+            item->reg.heater.delta,
+            item->reg.heater.em.pwm_rsl,
+            item->reg.cooler.use,
+            item->reg.cooler.delta,
+            item->reg.cooler.em.pwm_rsl
             );
     if (bufCat(buf, q, buf_size) == NULL) {
         return 0;
@@ -186,15 +144,13 @@ int bufCatProgInit(const Prog *item, char *buf, size_t buf_size) {
 }
 
 int sendStrPack(char qnf, char *cmd) {
-    extern size_t sock_buf_size;
     extern Peer peer_client;
-    return acp_sendStrPack(qnf, cmd, sock_buf_size, &peer_client);
+    return acp_sendStrPack(qnf, cmd, &peer_client);
 }
 
 int sendBufPack(char *buf, char qnf, char *cmd_str) {
-    extern size_t sock_buf_size;
     extern Peer peer_client;
-    return acp_sendBufPack(buf, qnf, cmd_str, sock_buf_size, &peer_client);
+    return acp_sendBufPack(buf, qnf, cmd_str, &peer_client);
 }
 
 void sendStr(const char *s, uint8_t *crc) {
@@ -226,8 +182,6 @@ void printAll(ProgList *list, PeerList *pl) {
     sendStr(q, &crc);
     snprintf(q, sizeof q, "cycle_duration nsec: %ld\n", cycle_duration.tv_nsec);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "peer_lock_id: %s\n", peer_lock_id);
-    sendStr(q, &crc);
     snprintf(q, sizeof q, "db_data_path: %s\n", db_data_path);
     sendStr(q, &crc);
     snprintf(q, sizeof q, "db_public_path: %s\n", db_public_path);
@@ -238,32 +192,33 @@ void printAll(ProgList *list, PeerList *pl) {
     sendStr(q, &crc);
     snprintf(q, sizeof q, "prog_list length: %d\n", list->length);
     sendStr(q, &crc);
-    sendStr("+-----------------------------------------------------------------------------------------------------------------------+\n", &crc);
-    sendStr("|                                                      Program                                                          |\n", &crc);
-    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
-    sendStr("|    id     |    goal   |   delta   | change_gap|change_rest|   state   |  state_r  | state_onf | out_heater| out_cooler|\n", &crc);
-    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
+    sendStr("+-----------------------------------------------------------------------------------------------------------------------------------+\n", &crc);
+    sendStr("|                                                             Program                                                               |\n", &crc);
+    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
+    sendStr("|    id     |    goal   |  delta_h  |  delta_c  | change_gap|change_rest|   state   |  state_r  | state_onf | out_heater| out_cooler|\n", &crc);
+    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
     PROG_LIST_LOOP_DF
     PROG_LIST_LOOP_ST
-            char *state = getStateStr(curr->state);
-    char *state_r = getStateStr(curr->state_r);
-    char *state_onf = getStateStr(curr->state_onf);
+            char *state = reg_getStateStr(curr->reg.state);
+    char *state_r = reg_getStateStr(curr->reg.state_r);
+    char *state_onf = reg_getStateStr(curr->reg.state_onf);
     struct timespec tm1 = getTimeRestChange(curr);
-    snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11s|%11.3f|%11.3f|\n",
+    snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11s|%11.3f|%11.3f|\n",
             curr->id,
-            curr->goal,
-            curr->delta,
-            curr->change_gap.tv_sec,
+            curr->reg.goal,
+            curr->reg.heater.delta,
+            curr->reg.cooler.delta,
+            curr->reg.change_gap.tv_sec,
             tm1.tv_sec,
             state,
             state_r,
             state_onf,
-            curr->output_heater,
-            curr->output_cooler
+            curr->reg.heater.output,
+            curr->reg.cooler.output
             );
     sendStr(q, &crc);
     PROG_LIST_LOOP_SP
-    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
+    sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n", &crc);
 
     sendStr("+-------------------------------------------------------------------------------------+\n", &crc);
     sendStr("|                                       Peer                                          |\n", &crc);
@@ -293,15 +248,15 @@ void printAll(ProgList *list, PeerList *pl) {
     snprintf(q, sizeof q, "|%11d|%11d|%11d|%11f|%11p|%11d|%11d|%11f|%11p|\n",
             curr->id,
 
-            curr->em_c.id,
-            curr->em_c.remote_id,
-            curr->em_c.pwm_rsl,
-            curr->em_c.source,
+            curr->reg.heater.em.id,
+            curr->reg.heater.em.remote_id,
+            curr->reg.heater.em.pwm_rsl,
+            curr->reg.heater.em.source,
 
-            curr->em_h.id,
-            curr->em_h.remote_id,
-            curr->em_h.pwm_rsl,
-            curr->em_h.source
+            curr->reg.cooler.em.id,
+            curr->reg.cooler.em.remote_id,
+            curr->reg.cooler.em.pwm_rsl,
+            curr->reg.cooler.em.source
             );
     sendStr(q, &crc);
     PROG_LIST_LOOP_SP
@@ -311,18 +266,18 @@ void printAll(ProgList *list, PeerList *pl) {
     sendStr("+-----------+-----------+-----------+-----------+------------------------------------------+\n", &crc);
     sendStr("|           |           |           |           |                   value                  |\n", &crc);
     sendStr("|           |           |           |           |-----------+-----------+-----------+------+\n", &crc);
-    sendStr("|    id     |    id     | remote_id | peer_link |   temp    |    sec    |   nsec    | state|\n", &crc);
+    sendStr("|    id     |    id     | remote_id | peer_link |   value   |    sec    |   nsec    | state|\n", &crc);
     sendStr("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+------+\n", &crc);
     PROG_LIST_LOOP_ST
     snprintf(q, sizeof q, "|%11d|%11d|%11d|%11p|%11f|%11ld|%11ld|%6d|\n",
             curr->id,
-            curr->sensor.id,
-            curr->sensor.remote_id,
-            curr->sensor.source,
-            curr->sensor.value.value,
-            curr->sensor.value.tm.tv_sec,
-            curr->sensor.value.tm.tv_nsec,
-            curr->sensor.value.state
+            curr->reg.sensor.id,
+            curr->reg.sensor.remote_id,
+            curr->reg.sensor.source,
+            curr->reg.sensor.value.value,
+            curr->reg.sensor.value.tm.tv_sec,
+            curr->reg.sensor.value.tm.tv_nsec,
+            curr->reg.sensor.value.state
             );
     sendStr(q, &crc);
     PROG_LIST_LOOP_SP
@@ -352,21 +307,27 @@ void printHelp() {
     sendStr(q, &crc);
     snprintf(q, sizeof q, "%c\tunload program from RAM; program id expected if '.' quantifier is used\n", ACP_CMD_STOP);
     sendStr(q, &crc);
+    snprintf(q, sizeof q, "%c\tunload program from RAM, after that load it; program id expected if '.' quantifier is used\n", ACP_CMD_RESET);
+    sendStr(q, &crc);
     snprintf(q, sizeof q, "%c\tenable running program; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_ENABLE);
     sendStr(q, &crc);
     snprintf(q, sizeof q, "%c\tdisable running program; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_DISABLE);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "%c\tunload program from RAM, after that load it; program id expected if '.' quantifier is used\n", ACP_CMD_RESET);
+    snprintf(q, sizeof q, "%c\tset heater power; program id and value expected\n", ACP_CMD_REGONF_PROG_SET_HEATER_POWER);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "%c\tswitch prog state between REG and NOREG; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_SWITCH_STATE);
+    snprintf(q, sizeof q, "%c\tset cooler power; program id and value expected\n", ACP_CMD_REGONF_PROG_SET_COOLER_POWER);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "%c\tset heater power; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_SET_HEATER_POWER);
+    snprintf(q, sizeof q, "%c\tset goal; program id and value expected\n", ACP_CMD_REGONF_PROG_SET_GOAL);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "%c\tset cooler power; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_SET_COOLER_POWER);
+    snprintf(q, sizeof q, "%c\tset regulator EM mode (cooler or heater or both); program id and value expected\n", ACP_CMD_REGONF_PROG_SET_EM_MODE);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "%c\tget prog runtime data in format:  progId_state_stateEM_output_timeRestSecToEMSwap; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_GET_DATA_RUNTIME);
+    snprintf(q, sizeof q, "%c\tset heater delta; program id and value expected\n", ACP_CMD_REGONF_PROG_SET_HEATER_DELTA);
     sendStr(q, &crc);
-    snprintf(q, sizeof q, "%c\tget prog initial data in format;  progId_setPoint_mode_ONFdelta_PIDheaterKp_PIDheaterKi_PIDheaterKd_PIDcoolerKp_PIDcoolerKi_PIDcoolerKd; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_GET_DATA_INIT);
+    snprintf(q, sizeof q, "%c\tset cooler delta; program id and value expected\n", ACP_CMD_REGONF_PROG_SET_COOLER_DELTA);
+    sendStr(q, &crc);
+    snprintf(q, sizeof q, "%c\tget prog runtime data in format:  progId\\tstate\\tstateEM\\toutputHeater\\toutputCooler\\ttimeRestSecToEMSwap\\tsensorValue\\tsensorState; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_GET_DATA_RUNTIME);
+    sendStr(q, &crc);
+    snprintf(q, sizeof q, "%c\tget prog initial data in format;  progId\\tsetPoint\\tdeltaHeater\\tdeltaCooler\\tchangeGap; program id expected if '.' quantifier is used\n", ACP_CMD_REGONF_PROG_GET_DATA_INIT);
     sendStr(q, &crc);
     sendFooter(crc);
 }

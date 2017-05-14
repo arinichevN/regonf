@@ -4,24 +4,20 @@
 #include "main.h"
 
 int checkProg(const Prog *item, const ProgList *list) {
-    if (item->sensor.source == NULL) {
+    if (item->reg.sensor.source == NULL) {
         fprintf(stderr, "checkProg: no sensor attached to prog with id = %d\n", item->id);
         return 0;
     }
     /*
-        if (item->em_c == NULL) {
+        if (item->heater.em == NULL) {
             fprintf(stderr, "checkProg: no cooler EM attached to prog with id = %d\n", item->id);
             return 0;
         }
-        if (item->em_h == NULL) {
+        if (item->cooler.em == NULL) {
             fprintf(stderr, "checkProg: no heater EM attached to prog with id = %d\n", item->id);
             return 0;
         }
      */
-    if (item->delta < 0) {
-        fprintf(stderr, "checkProg: bad delta (delta>=0 expected) where prog_id = %d\n", item->id);
-        return 0;
-    }
     //unique id
     if (getProgById(item->id, list) != NULL) {
         fprintf(stderr, "checkProg: prog with id = %d is already running\n", item->id);
@@ -77,30 +73,44 @@ void saveProgEnable(int id, int v, const char* db_path) {
     }
 }
 
-void saveProgDelta(int id, float value, const char* db_path) {
+void saveProgFieldFloat(int id, float value, const char* db_path, char *field) {
     sqlite3 *db;
     if (!db_open(db_path, &db)) {
-        printfe("saveProgDelta: failed to open db where id=%d\n", id);
+        printfe("saveProgFieldFloat: failed to open db where id=%d\n", id);
         return;
     }
     char q[LINE_SIZE];
-    snprintf(q, sizeof q, "update prog set delta=%f where id=%d", value, id);
+    snprintf(q, sizeof q, "update prog set %s=%f where id=%d", field, value, id);
     if (!db_exec(db, q, 0, 0)) {
-        printfe("saveProgDelta: query failed: %s\n", q);
+        printfe("saveProgFieldFloat: query failed: %s\n", q);
     }
     sqlite3_close(db);
 }
 
-void saveProgGoal(int id, float value, const char* db_path) {
+void saveProgFieldInt(int id, int value, const char* db_path, char *field) {
     sqlite3 *db;
     if (!db_open(db_path, &db)) {
-        printfe("saveProgGoal: failed to open db where id=%d\n", id);
+        printfe("saveProgFieldInt: failed to open db where id=%d\n", id);
         return;
     }
     char q[LINE_SIZE];
-    snprintf(q, sizeof q, "update prog set goal=%f where id=%d", value, id);
+    snprintf(q, sizeof q, "update prog set %s=%d where id=%d", field, value, id);
     if (!db_exec(db, q, 0, 0)) {
-        printfe("saveProgGoal: query failed: %s\n", q);
+        printfe("saveProgFieldInt: query failed: %s\n", q);
+    }
+    sqlite3_close(db);
+}
+
+void saveProgFieldText(int id, const char * value, const char* db_path, const char *field) {
+    sqlite3 *db;
+    if (!db_open(db_path, &db)) {
+        printfe("saveProgFieldText: failed to open db where id=%d\n", id);
+        return;
+    }
+    char q[LINE_SIZE];
+    snprintf(q, sizeof q, "update prog set %s='%s' where id=%d", field, value, id);
+    if (!db_exec(db, q, 0, 0)) {
+        printfe("saveProgFieldText: query failed: %s\n", q);
     }
     sqlite3_close(db);
 }
@@ -118,27 +128,43 @@ int loadProg_callback(void *d, int argc, char **argv, char **azColName) {
         if (strcmp("id", azColName[i]) == 0) {
             item->id = atoi(argv[i]);
         } else if (strcmp("sensor_id", azColName[i]) == 0) {
-            if (!config_getSensorFTS(&item->sensor, atoi(argv[i]), data->peer_list, data->db)) {
+            if (!config_getSensorFTS(&item->reg.sensor, atoi(argv[i]), data->peer_list, data->db)) {
                 free(item);
                 return 1;
             }
-        } else if (strcmp("em_heater_id", azColName[i]) == 0) {
-            if (!config_getEM(&item->em_h, atoi(argv[i]), data->peer_list, data->db)) {
+        } else if (strcmp("heater_em_id", azColName[i]) == 0) {
+            if (!config_getEM(&item->reg.heater.em, atoi(argv[i]), data->peer_list, data->db)) {
                 free(item);
                 return 1;
             }
-        } else if (strcmp("em_cooler_id", azColName[i]) == 0) {
-            if (!config_getEM(&item->em_c, atoi(argv[i]), data->peer_list, data->db)) {
+        } else if (strcmp("cooler_em_id", azColName[i]) == 0) {
+            if (!config_getEM(&item->reg.cooler.em, atoi(argv[i]), data->peer_list, data->db)) {
                 free(item);
                 return 1;
+            }
+        } else if (strcmp("em_mode", azColName[i]) == 0) {
+            if (strcmp(REG_EM_MODE_COOLER_STR, argv[i]) == 0) {
+                item->reg.cooler.use = 1;
+                item->reg.heater.use = 0;
+            } else if (strcmp(REG_EM_MODE_HEATER_STR, argv[i]) == 0) {
+                item->reg.cooler.use = 0;
+                item->reg.heater.use = 1;
+            } else if (strcmp(REG_EM_MODE_BOTH_STR, argv[i]) == 0) {
+                item->reg.cooler.use = 1;
+                item->reg.heater.use = 1;
+            } else {
+                item->reg.cooler.use = 0;
+                item->reg.heater.use = 0;
             }
         } else if (strcmp("goal", azColName[i]) == 0) {
-            item->goal = atof(argv[i]);
-        } else if (strcmp("delta", azColName[i]) == 0) {
-            item->delta = atof(argv[i]);
+            item->reg.goal = atof(argv[i]);
+        } else if (strcmp("heater_delta", azColName[i]) == 0) {
+            item->reg.heater.delta = atof(argv[i]);
+        } else if (strcmp("cooler_delta", azColName[i]) == 0) {
+            item->reg.cooler.delta = atof(argv[i]);
         } else if (strcmp("change_gap", azColName[i]) == 0) {
-            item->change_gap.tv_nsec = 0;
-            item->change_gap.tv_sec = atoi(argv[i]);
+            item->reg.change_gap.tv_nsec = 0;
+            item->reg.change_gap.tv_sec = atoi(argv[i]);
         } else if (strcmp("enable", azColName[i]) == 0) {
             enable = atoi(argv[i]);
         } else if (strcmp("load", azColName[i]) == 0) {
@@ -149,9 +175,9 @@ int loadProg_callback(void *d, int argc, char **argv, char **azColName) {
     }
 
     if (enable) {
-        item->state = INIT;
+        regonfhc_enable(&item->reg);
     } else {
-        item->state = DISABLE;
+        regonfhc_disable(&item->reg);
     }
 
     item->next = NULL;
@@ -284,5 +310,5 @@ int reloadProgById(int id, ProgList *list, PeerList *pl, const char* db_path) {
     if (deleteProgById(id, list, db_path)) {
         return 1;
     }
-    return addProgById(id, list,pl, db_path);
+    return addProgById(id, list, pl, db_path);
 }
