@@ -9,7 +9,7 @@ static void controlEM(RegOnfHCEM *item, float output) {
     }
 }
 
-void regonfhc_onf(RegOnfHC *item) {
+void regonfhc_control(RegOnfHC *item) {
     switch (item->state) {
         case REG_INIT:
             item->tmr.ready = 0;
@@ -42,7 +42,6 @@ void regonfhc_onf(RegOnfHC *item) {
                 item->snsrf_count = 0;
                 int value_is_out = 0;
                 char other_em;
-                EM *em_turn_off;
                 RegOnfHCEM *reg_em = NULL;
                 RegOnfHCEM *reg_em_other = NULL;
                 switch (item->state_r) {

@@ -196,8 +196,6 @@ int initData() {
 void serverRun(int *state, int init_state) {
     char buf_in[sock_buf_size];
     char buf_out[sock_buf_size];
-    uint8_t crc;
-    crc = 0;
     memset(buf_in, 0, sizeof buf_in);
     acp_initBuf(buf_out, sizeof buf_out);
     if (recvfrom(sock_fd, buf_in, sizeof buf_in, 0, (struct sockaddr*) (&(peer_client.addr)), &(peer_client.addr_size)) < 0) {
@@ -334,7 +332,7 @@ void serverRun(int *state, int init_state) {
             return;
 
     }
-    int i, j;
+    int i;
     switch (buf_in[1]) {
         case ACP_CMD_STOP:
             switch (buf_in[0]) {
@@ -630,7 +628,7 @@ void serverRun(int *state, int init_state) {
                         regonfhc_setCoolerDelta(&curr->reg, f1l.item[0]);
                         unlockProg(curr);
                     }
-                    saveProgFieldFloat(i1f1l.item[i].p0, i1f1l.item[i].p1, db_data_path, "cooler_delta");
+                    saveProgFieldFloat(i1f1l.item[0].p0, i1f1l.item[0].p1, db_data_path, "cooler_delta");
                     PROG_LIST_LOOP_SP
                     break;
                 }
@@ -724,7 +722,7 @@ void progControl(Prog *item) {
 #ifdef MODE_DEBUG
     printf("progId: %d ", item->id);
 #endif
-    regonfhc_onf(&item->reg);
+    regonfhc_control(&item->reg);
 }
 
 void *threadFunction(void *arg) {
@@ -831,6 +829,12 @@ void exit_nicely_e(char *s) {
 }
 
 int main(int argc, char** argv) {
+        if (geteuid() != 0) {
+#ifdef MODE_DEBUG
+        fprintf(stderr,"%s: root user expected\n", APP_NAME_STR);
+#endif
+        return (EXIT_FAILURE);
+    }
 #ifndef MODE_DEBUG
     daemon(0, 0);
 #endif

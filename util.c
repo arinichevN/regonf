@@ -228,7 +228,7 @@ void printAll(ProgList *list, PeerList *pl) {
     for (i = 0; i < pl->length; i++) {
         snprintf(q, sizeof q, "|%32s|%11p|%11u|%16u|%11d|\n",
                 pl->item[i].id,
-                &pl->item[i],
+                (void *)&pl->item[i],
                 pl->item[i].addr.sin_port,
                 pl->item[i].addr.sin_addr.s_addr,
                 *pl->item[i].fd
@@ -251,12 +251,12 @@ void printAll(ProgList *list, PeerList *pl) {
             curr->reg.heater.em.id,
             curr->reg.heater.em.remote_id,
             curr->reg.heater.em.pwm_rsl,
-            curr->reg.heater.em.source,
+           (void *) curr->reg.heater.em.source,
 
             curr->reg.cooler.em.id,
             curr->reg.cooler.em.remote_id,
             curr->reg.cooler.em.pwm_rsl,
-            curr->reg.cooler.em.source
+            (void *)curr->reg.cooler.em.source
             );
     sendStr(q, &crc);
     PROG_LIST_LOOP_SP
@@ -273,7 +273,7 @@ void printAll(ProgList *list, PeerList *pl) {
             curr->id,
             curr->reg.sensor.id,
             curr->reg.sensor.remote_id,
-            curr->reg.sensor.source,
+            (void *)curr->reg.sensor.source,
             curr->reg.sensor.value.value,
             curr->reg.sensor.value.tm.tv_sec,
             curr->reg.sensor.value.tm.tv_nsec,
