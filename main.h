@@ -14,8 +14,9 @@
 #include "lib/regonfhc.h"
 #include "lib/acp/main.h"
 #include "lib/acp/app.h"
+#include "lib/acp/regulator.h"
+#include "lib/acp/prog.h"
 #include "lib/acp/regonf.h"
-#include "lib/acp/lck.h"
 
 #define APP_NAME regonf
 #define APP_NAME_STR TOSTRING(APP_NAME)
