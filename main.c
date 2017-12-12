@@ -40,7 +40,7 @@ int readSettings() {
 #endif
         return 0;
     }
-
+ skipLine(stream);
     int n;
     n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%255s\t%255s\n",
             &sock_port,
