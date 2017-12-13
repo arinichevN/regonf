@@ -238,6 +238,8 @@ extern int acp_requestSendUnrequitedCmd(const char *cmd, Peer *peer) ;
 
 extern int acp_requestSendI1List(char *cmd, const I1List *data, ACPRequest *request, Peer *peer) ;
 
+extern int acp_requestSendI1F1List(char *cmd, const I1F1List *data, ACPRequest *request, Peer *peer);
+
 extern int acp_requestSendI2List(char *cmd, const I2List *data, ACPRequest *request, Peer *peer) ;
 
 extern int acp_requestSendS2List(char *cmd, const S2List *data, ACPRequest *request, Peer *peer) ;
@@ -245,6 +247,8 @@ extern int acp_requestSendS2List(char *cmd, const S2List *data, ACPRequest *requ
 extern int acp_requestSendS1List(char *cmd, const S1List *data, ACPRequest *request, Peer *peer) ;
 
 extern int acp_requestSendUnrequitedI1List(char *cmd, const I1List *data, Peer *peer) ;
+
+extern int acp_requestSendUnrequitedI1F1List(char *cmd, const I1F1List *data, Peer *peer);
 
 extern int acp_requestSendUnrequitedI2List(char *cmd, const I2List *data, Peer *peer) ;
 
@@ -270,6 +274,8 @@ extern int acp_readSensorInt(SensorInt *s) ;
 
 extern int acp_readSensorFTS(SensorFTS *s) ;
 
+extern int acp_getFTS(FTS *output, Peer *peer, int remote_id);
+
 extern void acp_pingPeer(Peer *item) ;
 
 extern void acp_pingPeerList(PeerList *list, struct timespec interval, struct timespec now) ;
@@ -277,6 +283,8 @@ extern void acp_pingPeerList(PeerList *list, struct timespec interval, struct ti
 extern int acp_responseSendCurTime(ACPResponse *item, Peer *peer) ;
 
 extern int acp_sendCmdGetInt(Peer *peer, char* cmd, int *output) ;
+
+extern int acp_sendCmdGetFloat(Peer *peer, char* cmd, float *output);
 
 extern int acp_responseFTSCat(int id, float value, struct timespec tm, int state, ACPResponse *response) ;
 

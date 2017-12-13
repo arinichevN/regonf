@@ -40,7 +40,7 @@ int readSettings() {
 #endif
         return 0;
     }
- skipLine(stream);
+    skipLine(stream);
     int n;
     n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%255s\t%255s\n",
             &sock_port,
@@ -232,6 +232,36 @@ void serverRun(int *state, int init_state) {
             Prog *curr = getProgById(i1l.item[i], &prog_list);
             if (curr != NULL) {
                 if (!bufCatProgInit(curr, &response)) {
+                    return;
+                }
+            }
+        }
+    } else if (ACP_CMD_IS(ACP_CMD_PROG_GET_ENABLED)) {
+        PARSE_I1LIST
+        for (int i = 0; i < i1l.length; i++) {
+            Prog *curr = getProgById(i1l.item[i], &prog_list);
+            if (curr != NULL) {
+                if (!bufCatProgEnabled(curr, &response)) {
+                    return;
+                }
+            }
+        }
+    } else if (ACP_CMD_IS(ACP_CMD_REG_PROG_GET_GOAL)) {
+        PARSE_I1LIST
+        for (int i = 0; i < i1l.length; i++) {
+            Prog *curr = getProgById(i1l.item[i], &prog_list);
+            if (curr != NULL) {
+                if (!bufCatProgGoal(curr, &response)) {
+                    return;
+                }
+            }
+        }
+    } else if (ACP_CMD_IS(ACP_CMD_GET_FTS)) {
+        PARSE_I1LIST
+        for (int i = 0; i < i1l.length; i++) {
+            Prog *curr = getProgById(i1l.item[i], &prog_list);
+            if (curr != NULL) {
+                if (!bufCatProgFTS(curr, &response)) {
                     return;
                 }
             }

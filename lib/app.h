@@ -111,6 +111,7 @@
     return NULL;
 
 #define FORL for (i = 0; i < list->length; i++) 
+#define FORLISTP(V, I) for (size_t I = 0; I < V->length; I++) 
 #define LIi list->item[i]
 #define Lil list->length-1
 
