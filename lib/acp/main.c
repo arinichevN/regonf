@@ -33,6 +33,8 @@ FUN_LIST_INIT(F1)
 
 FUN_LIST_INIT(I1F1)
 
+FUN_LIST_INIT(D1)
+
 FUN_LIST_INIT(S1)
 
 FUN_LIST_INIT(I1S1)
@@ -342,7 +344,7 @@ static void acp_bufToData(char **v) {
 static int acp_sendBuf(const char *buf, size_t buf_size, Peer *peer) {
     size_t sz = acp_packlen(buf, buf_size);
 #ifdef MODE_DEBUG
-    fprintf(stdout, "acp_sendBuf(): we will send: %u bytes\n", sz);
+    fprintf(stdout, "acp_sendBuf(): we will send: %u bytes to %s at %s %d\n", sz, peer->id, peer->addr_str, peer->port);
 #endif
     return sendBuf((void *) buf, sz, *(peer->fd), (struct sockaddr *) (&peer->addr), peer->addr_size);
 }
@@ -1402,6 +1404,26 @@ void acp_printI3(I3List *list) {
     puts("+-----------+-----------+-----------+");
 }
 
+void acp_sendPeerListInfo(PeerList *pl, ACPResponse *response, Peer *peer) {
+    char q[LINE_SIZE];
+    ACP_SEND_STR("+--------------------------------------------------------------------------------+\n")
+    ACP_SEND_STR("|                                       Peer                                     |\n")
+    ACP_SEND_STR("+-----------+---------------+-----------+-----------+----------------+-----------+\n")
+    ACP_SEND_STR("|    id     |    address    |   port    | sin_port  |     s_addr     |     fd    |\n")
+    ACP_SEND_STR("+-----------+---------------+-----------+-----------+----------------+-----------+\n")
+    for (int i = 0; i < pl->length; i++) {
+        snprintf(q, sizeof q, "|%11s|%15s|%11d|%11u|%16u|%11d|\n",
+                pl->item[i].id,
+                pl->item[i].addr_str,
+                pl->item[i].port,
+                pl->item[i].addr.sin_port,
+                pl->item[i].addr.sin_addr.s_addr,
+                *pl->item[i].fd
+                );
+        ACP_SEND_STR(q)
+    }
+    ACP_SEND_STR("+-----------+---------------+-----------+-----------+----------------+-----------+\n")
+}
 
 
 
