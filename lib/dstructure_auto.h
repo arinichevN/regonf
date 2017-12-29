@@ -25,5 +25,14 @@
 #define DEC_FUN_FIFO_PUSH(T) extern int T ## _fifo_push(T item, FIFOItemList_ ## T *list);
 #define DEC_FUN_FIFO_POP(T) extern int T ## _fifo_pop(T * item, FIFOItemList_ ## T *list);
 
+
+#define FUN_PIPE_POP(T) T pipe_pop(T ## List *list) {return list->item[list->length-1];}
+#define FUN_PIPE_PUSH(T) void pipe_push(T ## List *list, T value) {for (int i = list->length - 1; i > 0; i--) {list->item[i] = list->item[i - 1];}list->item[0] = value;}
+
+//round list. we will push first to free place, if no free place, we will update oldest items
+#define DEC_RLIST(T) typedef struct {T *item;size_t next_ind;size_t length;size_t max_length;} T ## RList;
+#define FUN_PUSH_RLIST(T) void push_ ## T ## RList(T ## RList *list, T value) {list->item[list->next_ind] = value;if (list->next_ind < list->length - 1) {list->next_ind++;} else {list->next_ind = 0;}}
+#define FUN_INIT_RLIST(T) int init_ ## T ## RList(T ## RList *list, size_t n) {list->max_length=list->length=0;size_t sz=n * sizeof *(list->item);list->item = (T *) malloc(sz);if (list->item == NULL) {return 0;}memset(list->item, 0, sz);list->max_length=n;return 1;}
+
 #endif 
 

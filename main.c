@@ -4,14 +4,11 @@
 
 #include "main.h"
 
-char pid_path[LINE_SIZE];
 int app_state = APP_INIT;
 
 char db_data_path[LINE_SIZE];
 char db_public_path[LINE_SIZE];
 
-int pid_file = -1;
-int proc_id;
 int sock_port = -1;
 int sock_fd = -1;
 int sock_fd_tf = -1;
@@ -42,15 +39,14 @@ int readSettings() {
     }
     skipLine(stream);
     int n;
-    n = fscanf(stream, "%d\t%255s\t%ld\t%ld\t%255s\t%255s\n",
+    n = fscanf(stream, "%d\t%ld\t%ld\t%255s\t%255s\n",
             &sock_port,
-            pid_path,
             &cycle_duration.tv_sec,
             &cycle_duration.tv_nsec,
             db_data_path,
             db_public_path
             );
-    if (n != 6) {
+    if (n != 5) {
         fclose(stream);
         return 0;
     }
@@ -62,14 +58,10 @@ void initApp() {
     if (!readSettings()) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
-    if (!initPid(&pid_file, &proc_id, pid_path)) {
-        exit_nicely_e("initApp: failed to initialize pid\n");
-    }
 #ifdef MODE_DEBUG
     printf("initApp: CONFIG_FILE: %s\n", CONFIG_FILE);
-    printf("initApp: PID: %d\n", proc_id);
+    printf("initApp: PID: %d\n", getpid());
     printf("initApp: sock_port: %d\n", sock_port);
-    printf("initApp: pid_path: %s\n", pid_path);
     printf("initApp: cycle_duration: %ld(sec) %ld(nsec)\n", cycle_duration.tv_sec, cycle_duration.tv_nsec);
     printf("initApp: db_data_path: %s\n", db_data_path);
     printf("initApp: db_public_path: %s\n", db_public_path);
@@ -427,7 +419,7 @@ void freeApp() {
     freeData();
     freeSocketFd(&sock_fd);
     freeSocketFd(&sock_fd_tf);
-    freePid(&pid_file, &proc_id, pid_path);
+
 }
 
 void exit_nicely() {
