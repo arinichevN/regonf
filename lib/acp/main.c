@@ -136,10 +136,6 @@ static void acp_requestSetNewId(ACPRequest * item) {
     item->id = (unsigned int) rand();
 }
 
-static inline int acp_readAll(Peer *peer){
-    readAll(*(peer->fd));
-}
-
 static int acp_read(char *buf, size_t buf_size, Peer *peer) {
     ssize_t n = recvfrom(*peer->fd, buf, buf_size, 0, (struct sockaddr*) (&(peer->addr)), &(peer->addr_size));
     if (n < 0) {
