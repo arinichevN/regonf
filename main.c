@@ -1,7 +1,3 @@
-/*
- * regonf
- */
-
 #include "main.h"
 
 int app_state = APP_INIT;
@@ -16,11 +12,11 @@ Peer peer_client = {.fd = &sock_fd, .addr_size = sizeof peer_client.addr};
 struct timespec cycle_duration = {0, 0};
 DEF_THREAD
 Mutex progl_mutex = {.created = 0, .attr_initialized = 0};
-I1List i1l = {NULL, 0};
-I2List i2l = {NULL, 0};
-I1S1List i1s1l = {NULL, 0};
-I1F1List i1f1l = {NULL, 0};
-PeerList peer_list = {NULL, 0};
+I1List i1l ;
+I2List i2l ;
+I1S1List i1s1l ;
+I1F1List i1f1l ;
+PeerList peer_list ;
 ProgList prog_list = {NULL, NULL, 0};
 
 #include "util.c"
@@ -144,10 +140,10 @@ int initData() {
     }
     return 1;
 }
-#define PARSE_I1LIST acp_requestDataToI1List(&request, &i1l, prog_list.length);if (i1l.length <= 0) {return;}
-#define PARSE_I1F1LIST acp_requestDataToI1F1List(&request, &i1f1l, prog_list.length);if (i1f1l.length <= 0) {return;}
-#define PARSE_I2LIST acp_requestDataToI2List(&request, &i2l, prog_list.length);if (i2l.length <= 0) {return;}
-#define PARSE_I1S1LIST acp_requestDataToI1S1List(&request, &i1s1l, prog_list.length);if (i1s1l.length <= 0) {return;}
+#define PARSE_I1LIST acp_requestDataToI1List(&request, &i1l);if (i1l.length <= 0) {return;}
+#define PARSE_I1F1LIST acp_requestDataToI1F1List(&request, &i1f1l);if (i1f1l.length <= 0) {return;}
+#define PARSE_I2LIST acp_requestDataToI2List(&request, &i2l);if (i2l.length <= 0) {return;}
+#define PARSE_I1S1LIST acp_requestDataToI1S1List(&request, &i1s1l);if (i1s1l.length <= 0) {return;}
 
 void serverRun(int *state, int init_state) {
     SERVER_HEADER
