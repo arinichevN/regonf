@@ -11,6 +11,7 @@ int sock_fd = -1;
 Peer peer_client = {.fd = &sock_fd, .addr_size = sizeof peer_client.addr};
 struct timespec cycle_duration = {0, 0};
 Mutex progl_mutex = {.created = 0, .attr_initialized = 0};
+
 I1List i1l;
 I2List i2l;
 I1S1List i1s1l;
@@ -46,24 +47,21 @@ int readSettings() {
             );
     if (n != 5) {
         fclose(stream);
+#ifdef MODE_DEBUG
+        fputs("ERROR: readSettings: bad format\n", stderr);
+#endif
         return 0;
     }
     fclose(stream);
+#ifdef MODE_DEBUG
+    printf("readSettings: \n\tsock_port: %d, \n\tcycle_duration: %ld sec %ld nsec, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n", sock_port, cycle_duration.tv_sec, cycle_duration.tv_nsec, db_data_path, db_public_path);
+#endif
     return 1;
 }
-
 void initApp() {
     if (!readSettings()) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
-#ifdef MODE_DEBUG
-    printf("initApp: CONFIG_FILE: %s\n", CONFIG_FILE);
-    printf("initApp: PID: %d\n", getpid());
-    printf("initApp: sock_port: %d\n", sock_port);
-    printf("initApp: cycle_duration: %ld(sec) %ld(nsec)\n", cycle_duration.tv_sec, cycle_duration.tv_nsec);
-    printf("initApp: db_data_path: %s\n", db_data_path);
-    printf("initApp: db_public_path: %s\n", db_public_path);
-#endif
     if (!initMutex(&progl_mutex)) {
         exit_nicely_e("initApp: failed to initialize prog mutex\n");
     }

@@ -70,7 +70,7 @@ int getProg_callback(void *d, int argc, char **argv, char **azColName) {
             c++;
         } else {
 #ifdef MODE_DEBUG
-            fprintf(stderr, "%s(): unknown column: %s\n", __FUNCTION__);
+            fprintf(stderr, "%s(): unknown column\n", __FUNCTION__);
 #endif
 
         }
@@ -147,7 +147,7 @@ int addProg(Prog *item, ProgList *list) {
     return 1;
 }
 
-int addProgById(int prog_id, ProgList *list,EMList *em_list,SensorFTSList *sensor_list,sqlite3 *db_data, const char *db_data_path) {
+int addProgById(int prog_id, ProgList *list, EMList *em_list, SensorFTSList *sensor_list, sqlite3 *db_data, const char *db_data_path) {
     extern struct timespec cycle_duration;
     Prog *rprog = getProgById(prog_id, list);
     if (rprog != NULL) {
@@ -211,7 +211,7 @@ int deleteProgById(int id, ProgList *list, const char* db_path) {
     while (curr != NULL) {
         if (curr->id == id) {
             if (prev != NULL) {
-                                lockMutex(&prev->mutex);
+                lockMutex(&prev->mutex);
                 prev->next = curr->next;
                 unlockMutex(&prev->mutex);
             } else {//curr=top
@@ -243,21 +243,24 @@ int loadActiveProg_callback(void *d, int argc, char **argv, char **azColName) {
     ProgData *data = d;
     for (int i = 0; i < argc; i++) {
         if (DB_COLUMN_IS("id")) {
-            int id = atoi(argv[i]);printf("%s: %d\n", __FUNCTION__, id);
-            addProgById(id, data->prog_list, data->em_list,data->sensor_list, data->db_data, NULL);
+            int id = atoi(argv[i]);
+            printf("%s: %d\n", __FUNCTION__, id);
+            addProgById(id, data->prog_list, data->em_list, data->sensor_list, data->db_data, NULL);
         } else {
-            fprintf(stderr,"%s(): unknown column\n", __FUNCTION__);
+#ifdef MODE_DEBUG
+            fprintf(stderr, "%s(): unknown column\n", __FUNCTION__);
+#endif
         }
     }
     return EXIT_SUCCESS;
 }
 
-int loadActiveProg(ProgList *list, EMList *em_list,SensorFTSList *sensor_list, char *db_path) {
+int loadActiveProg(ProgList *list, EMList *em_list, SensorFTSList *sensor_list, char *db_path) {
     sqlite3 *db;
     if (!db_open(db_path, &db)) {
         return 0;
     }
-    ProgData data = {.prog_list = list, .em_list = em_list, .sensor_list=sensor_list,.db_data = db};
+    ProgData data = {.prog_list = list, .em_list = em_list, .sensor_list = sensor_list, .db_data = db};
     char *q = "select id from prog where load=1";
     if (!db_exec(db, q, loadActiveProg_callback, &data)) {
 #ifdef MODE_DEBUG

@@ -323,7 +323,7 @@ void printHelp(ACPResponse *response) {
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tdisable running program; program id expected\n", ACP_CMD_PROG_DISABLE);
     SEND_STR(q)
-    snprintf(q, sizeof q, "%s\tsave data to database or not; program id and value (1|0) expected\n", ACP_CMD_PROG_SET_SAVE);
+    snprintf(q, sizeof q, "%s\tsave data to database or not; program id and value (1 || 0) expected\n", ACP_CMD_PROG_SET_SAVE);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tget prog state (1-enabled, 0-disabled); program id expected\n", ACP_CMD_PROG_GET_ENABLED);
     SEND_STR(q)
