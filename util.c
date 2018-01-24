@@ -1,7 +1,84 @@
 #include "main.h"
 
-Prog * getProgById(int id, const ProgList *list) {
-    LLIST_GET_BY_ID(Prog)
+FUN_LLIST_GET_BY_ID(Prog)
+
+extern int getProgByIdFDB(int prog_id, Prog *item, EMList *em_list, SensorFTSList *sensor_list, sqlite3 *dbl, const char *db_path);
+
+void stopProgThread(Prog *item) {
+#ifdef MODE_DEBUG
+    printf("signaling thread %d to cancel...\n", item->id);
+#endif
+    if (pthread_cancel(item->thread) != 0) {
+#ifdef MODE_DEBUG
+        perror("pthread_cancel()");
+#endif
+    }
+    void * result;
+#ifdef MODE_DEBUG
+    printf("joining thread %d...\n", item->id);
+#endif
+    if (pthread_join(item->thread, &result) != 0) {
+#ifdef MODE_DEBUG
+        perror("pthread_join()");
+#endif
+    }
+    if (result != PTHREAD_CANCELED) {
+#ifdef MODE_DEBUG
+        printf("thread %d not canceled\n", item->id);
+#endif
+    }
+}
+
+void stopAllProgThreads(ProgList * list) {
+    PROG_LIST_LOOP_ST
+#ifdef MODE_DEBUG
+            printf("signaling thread %d to cancel...\n", item->id);
+#endif
+    if (pthread_cancel(item->thread) != 0) {
+#ifdef MODE_DEBUG
+        perror("pthread_cancel()");
+#endif
+    }
+    PROG_LIST_LOOP_SP
+
+    PROG_LIST_LOOP_ST
+            void * result;
+#ifdef MODE_DEBUG
+    printf("joining thread %d...\n", item->id);
+#endif
+    if (pthread_join(item->thread, &result) != 0) {
+#ifdef MODE_DEBUG
+        perror("pthread_join()");
+#endif
+    }
+    if (result != PTHREAD_CANCELED) {
+#ifdef MODE_DEBUG
+        printf("thread %d not canceled\n", item->id);
+#endif
+    }
+    PROG_LIST_LOOP_SP
+}
+
+void freeProg(Prog*item) {
+    freeSocketFd(&item->sock_fd);
+    freeMutex(&item->mutex);
+    free(item);
+}
+
+void freeProgList(ProgList *list) {
+    Prog *item = list->top, *temp;
+    while (item != NULL) {
+        temp = item;
+        item = item->next;
+        freeProg(temp);
+    }
+    list->top = NULL;
+    list->last = NULL;
+    list->length = 0;
+}
+
+int checkProg(const Prog *item) {
+    return 1;
 }
 
 int lockProgList() {
@@ -34,127 +111,92 @@ int unlockProgList() {
     return 1;
 }
 
-int lockProg(Prog *item) {
-    if (pthread_mutex_lock(&(item->mutex.self)) != 0) {
-#ifdef MODE_DEBUG
-        perror("lockProg: error locking mutex");
-#endif 
-        return 0;
-    }
-    return 1;
-}
-
-int tryLockProg(Prog *item) {
-    if (pthread_mutex_trylock(&(item->mutex.self)) != 0) {
-        return 0;
-    }
-    return 1;
-}
-
-int unlockProg(Prog *item) {
-    if (pthread_mutex_unlock(&(item->mutex.self)) != 0) {
-#ifdef MODE_DEBUG
-        perror("unlockProg: error unlocking mutex (CMD_GET_ALL)");
-#endif 
-        return 0;
-    }
-    return 1;
-}
-
 void secure() {
-    PROG_LIST_LOOP_DF
     PROG_LIST_LOOP_ST
-    regonfhc_turnOff(&curr->reg);
+    regonfhc_turnOff(&item->reg);
     PROG_LIST_LOOP_SP
-}
-
-int checkSensor(const SensorFTS *item) {
-    if (item->source == NULL) {
-        fprintf(stderr, "checkSensor: no data source where id = %d\n", item->id);
-        return 0;
-    }
-    return 1;
-}
-
-int checkEM(const EMList *list) {
-    size_t i, j;
-    for (i = 0; i < list->length; i++) {
-        if (list->item[i].source == NULL) {
-            fprintf(stderr, "checkEm: no data source where id = %d\n", list->item[i].id);
-            return 0;
-        }
-    }
-    //unique id
-    for (i = 0; i < list->length; i++) {
-        for (j = i + 1; j < list->length; j++) {
-            if (list->item[i].id == list->item[j].id) {
-                fprintf(stderr, "checkEm: id is not unique where id = %d\n", list->item[i].id);
-                return 0;
-            }
-        }
-    }
-    return 1;
 }
 
 struct timespec getTimeRestChange(const Prog *item) {
     return getTimeRestTmr(item->reg.change_gap, item->reg.tmr);
 }
 
-int bufCatProgRuntime(const Prog *item, ACPResponse *response) {
-    char q[LINE_SIZE];
-    char *state = reg_getStateStr(item->reg.state);
-    char *state_r = reg_getStateStr(item->reg.state_r);
-    struct timespec tm_rest = getTimeRestChange(item);
-    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR,
-            item->id,
-            state,
-            state_r,
-            item->reg.heater.output,
-            item->reg.cooler.output,
-            tm_rest.tv_sec,
-            item->reg.sensor.value.value,
-            item->reg.sensor.value.state
-            );
-    return acp_responseStrCat(response, q);
+int bufCatProgRuntime(Prog *item, ACPResponse *response) {
+    if (lockMutex(&item->mutex)) {
+        char q[LINE_SIZE];
+        char *state = reg_getStateStr(item->reg.state);
+        char *state_r = reg_getStateStr(item->reg.state_r);
+        struct timespec tm_rest = getTimeRestChange(item);
+        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR "%s" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR,
+                item->id,
+                state,
+                state_r,
+                item->reg.heater.output,
+                item->reg.cooler.output,
+                tm_rest.tv_sec,
+                item->reg.sensor.value.value,
+                item->reg.sensor.value.state
+                );
+        unlockMutex(&item->mutex);
+        return acp_responseStrCat(response, q);
+    }
+    return 0;
 }
 
-int bufCatProgInit(const Prog *item, ACPResponse *response) {
-    char q[LINE_SIZE];
-    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_ROW_STR,
-            item->id,
-            item->reg.change_gap.tv_sec,
-            item->reg.goal,
-            item->reg.heater.use,
-            item->reg.heater.delta,
-            item->reg.heater.em.pwm_rsl,
-            item->reg.cooler.use,
-            item->reg.cooler.delta,
-            item->reg.cooler.em.pwm_rsl
-            );
-    return acp_responseStrCat(response, q);
+int bufCatProgInit(Prog *item, ACPResponse *response) {
+    if (lockMutex(&item->mutex)) {
+        char q[LINE_SIZE];
+        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%ld" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_ROW_STR,
+                item->id,
+                item->reg.change_gap.tv_sec,
+                item->reg.goal,
+                item->reg.heater.use,
+                item->reg.heater.delta,
+                item->reg.heater.em.pwm_rsl,
+                item->reg.cooler.use,
+                item->reg.cooler.delta,
+                item->reg.cooler.em.pwm_rsl
+                );
+        unlockMutex(&item->mutex);
+        return acp_responseStrCat(response, q);
+    }
+    return 0;
 }
 
-int bufCatProgGoal(const Prog *item, ACPResponse *response) {
-    char q[LINE_SIZE];
-    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_ROW_STR,
-            item->id,
-            item->reg.goal
-            );
-    return acp_responseStrCat(response, q);
+int bufCatProgGoal(Prog *item, ACPResponse *response) {
+    if (lockMutex(&item->mutex)) {
+        char q[LINE_SIZE];
+        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR FLOAT_NUM ACP_DELIMITER_ROW_STR,
+                item->id,
+                item->reg.goal
+                );
+        unlockMutex(&item->mutex);
+        return acp_responseStrCat(response, q);
+    }
+    return 0;
 }
 
-int bufCatProgFTS(const Prog *item, ACPResponse *response) {
-    return acp_responseFTSCat(item->id, item->reg.sensor.value.value, item->reg.sensor.value.tm, item->reg.sensor.value.state, response);
+int bufCatProgFTS(Prog *item, ACPResponse *response) {
+    if (lockMutex(&item->mutex)) {
+        int r = acp_responseFTSCat(item->id, item->reg.sensor.value.value, item->reg.sensor.value.tm, item->reg.sensor.value.state, response);
+        unlockMutex(&item->mutex);
+        return r;
+    }
+    return 0;
 }
 
-int bufCatProgEnabled(const Prog *item, ACPResponse *response) {
-    char q[LINE_SIZE];
-    int enabled = regonfhc_getEnabled(&item->reg);
-    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR,
-            item->id,
-            enabled
-            );
-    return acp_responseStrCat(response, q);
+int bufCatProgEnabled(Prog *item, ACPResponse *response) {
+    if (lockMutex(&item->mutex)) {
+        char q[LINE_SIZE];
+        int enabled = regonfhc_getEnabled(&item->reg);
+        snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%d" ACP_DELIMITER_ROW_STR,
+                item->id,
+                enabled
+                );
+        unlockMutex(&item->mutex);
+        return acp_responseStrCat(response, q);
+    }
+    return 0;
 }
 
 void printData(ACPResponse *response) {
@@ -183,24 +225,23 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
     SEND_STR("|    id     |    goal   |  delta_h  |  delta_c  | change_gap|change_rest|   state   |  state_r  | state_onf | out_heater| out_cooler|\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
-    PROG_LIST_LOOP_DF
     PROG_LIST_LOOP_ST
-            char *state = reg_getStateStr(curr->reg.state);
-    char *state_r = reg_getStateStr(curr->reg.state_r);
-    char *state_onf = reg_getStateStr(curr->reg.state_onf);
-    struct timespec tm1 = getTimeRestChange(curr);
+            char *state = reg_getStateStr(item->reg.state);
+    char *state_r = reg_getStateStr(item->reg.state_r);
+    char *state_onf = reg_getStateStr(item->reg.state_onf);
+    struct timespec tm1 = getTimeRestChange(item);
     snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11s|%11.3f|%11.3f|\n",
-            curr->id,
-            curr->reg.goal,
-            curr->reg.heater.delta,
-            curr->reg.cooler.delta,
-            curr->reg.change_gap.tv_sec,
+            item->id,
+            item->reg.goal,
+            item->reg.heater.delta,
+            item->reg.cooler.delta,
+            item->reg.change_gap.tv_sec,
             tm1.tv_sec,
             state,
             state_r,
             state_onf,
-            curr->reg.heater.output,
-            curr->reg.cooler.output
+            item->reg.heater.output,
+            item->reg.cooler.output
             );
     SEND_STR(q)
     PROG_LIST_LOOP_SP
@@ -217,17 +258,17 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
     PROG_LIST_LOOP_ST
     snprintf(q, sizeof q, "|%11d|%11d|%11d|%11f|%11s|%11d|%11d|%11f|%11s|\n",
-            curr->id,
+            item->id,
 
-            curr->reg.heater.em.id,
-            curr->reg.heater.em.remote_id,
-            curr->reg.heater.em.pwm_rsl,
-             curr->reg.heater.em.source->id,
+            item->reg.heater.em.id,
+            item->reg.heater.em.remote_id,
+            item->reg.heater.em.pwm_rsl,
+            item->reg.heater.em.peer.id,
 
-            curr->reg.cooler.em.id,
-            curr->reg.cooler.em.remote_id,
-            curr->reg.cooler.em.pwm_rsl,
-          curr->reg.cooler.em.source->id
+            item->reg.cooler.em.id,
+            item->reg.cooler.em.remote_id,
+            item->reg.cooler.em.pwm_rsl,
+            item->reg.cooler.em.peer.id
             );
     SEND_STR(q)
     PROG_LIST_LOOP_SP
@@ -241,14 +282,14 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+------+\n")
     PROG_LIST_LOOP_ST
     snprintf(q, sizeof q, "|%11d|%11d|%11d|%11s|%11f|%11ld|%11ld|%6d|\n",
-            curr->id,
-            curr->reg.sensor.id,
-            curr->reg.sensor.remote_id,
-           curr->reg.sensor.source->id,
-            curr->reg.sensor.value.value,
-            curr->reg.sensor.value.tm.tv_sec,
-            curr->reg.sensor.value.tm.tv_nsec,
-            curr->reg.sensor.value.state
+            item->id,
+            item->reg.sensor.id,
+            item->reg.sensor.remote_id,
+            item->reg.sensor.peer.id,
+            item->reg.sensor.value.value,
+            item->reg.sensor.value.tm.tv_sec,
+            item->reg.sensor.value.tm.tv_nsec,
+            item->reg.sensor.value.state
             );
     SEND_STR(q)
     PROG_LIST_LOOP_SP
@@ -281,6 +322,8 @@ void printHelp(ACPResponse *response) {
     snprintf(q, sizeof q, "%s\tenable running program; program id expected\n", ACP_CMD_PROG_ENABLE);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tdisable running program; program id expected\n", ACP_CMD_PROG_DISABLE);
+    SEND_STR(q)
+    snprintf(q, sizeof q, "%s\tsave data to database or not; program id and value (1|0) expected\n", ACP_CMD_PROG_SET_SAVE);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tget prog state (1-enabled, 0-disabled); program id expected\n", ACP_CMD_PROG_GET_ENABLED);
     SEND_STR(q)

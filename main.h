@@ -29,7 +29,7 @@
 #endif
 #define CONFIG_FILE "" CONF_DIR "config.tsv"
 
-#define PROG_FIELDS "id,sensor_id,heater_em_id,em_mode,cooler_em_id,goal,heater_delta,cooler_delta,change_gap,enable,load"
+#define PROG_FIELDS "id,sensor_id,heater_em_id,em_mode,cooler_em_id,goal,heater_delta,cooler_delta,change_gap,save,enable,load"
 
 #define WAIT_RESP_TIMEOUT 3
 
@@ -40,13 +40,17 @@
 #define FLOAT_NUM "%.1f"
 
 
-#define PROG_LIST_LOOP_DF Prog *curr = prog_list.top;
-#define PROG_LIST_LOOP_ST while (curr != NULL) {
-#define PROG_LIST_LOOP_SP curr = curr->next; } curr = prog_list.top;
+#define PROG_LIST_LOOP_ST {Prog *item = prog_list.top; while (item != NULL) {
+#define PROG_LIST_LOOP_SP item = item->next; } item = prog_list.top;}
 
 struct prog_st {
     int id;
     RegOnfHC reg;
+    int save;
+    
+    int sock_fd;
+    struct timespec cycle_duration;
+    pthread_t thread;
     Mutex mutex;
     struct prog_st *next;
 };
@@ -56,8 +60,10 @@ typedef struct prog_st Prog;
 DEC_LLIST(Prog)
 
 typedef struct {
-    sqlite3 *db;
-    PeerList *peer_list;
+    sqlite3 *db_data;
+    EMList *em_list;
+    SensorFTSList *sensor_list;
+    Prog *prog;
     ProgList *prog_list;
 } ProgData;
 
@@ -72,10 +78,6 @@ extern void serverRun(int *state, int init_state) ;
 extern void progControl(Prog *item) ;
 
 extern void *threadFunction(void *arg) ;
-
-extern int createThread_ctl() ;
-
-extern void freeProg(ProgList * list) ;
 
 extern void freeData() ;
 

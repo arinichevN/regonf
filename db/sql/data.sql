@@ -21,6 +21,7 @@ CREATE TABLE "prog"
   "heater_delta" REAL NOT NULL,
   "cooler_em_id" INTEGER NOT NULL,
   "cooler_delta" REAL NOT NULL,
+  "save" INTEGER NOT NULL,--write data to persistent storage or not
   "enable" INTEGER NOT NULL,
   "load" INTEGER NOT NULL
 );
