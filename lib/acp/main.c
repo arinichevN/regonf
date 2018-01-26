@@ -908,31 +908,27 @@ int acp_readSensorInt(SensorInt *s) {
 
     //waiting for response...
     I2 td[1];
-    I2List tl = {td, 0};
+    I2List tl = {td, 0, 1};
 
-    int i;
-    int done = 0;
-    for (i = 0; i < ACP_RETRY_NUM; i++) {
-        memset(&td, 0, sizeof tl);
-        tl.length = 0;
-        if (!acp_responseReadI2List(&tl, &request, &s->peer)) {
+    memset(&td, 0, sizeof tl);
+    tl.length = 0;
+    if (!acp_responseReadI2List(&tl, &request, &s->peer)) {
 #ifdef MODE_DEBUG
-            fprintf(stderr, "%s(): acp_responseReadI2List() error where sensor.id = %d\n", __FUNCTION__, s->id);
+        fprintf(stderr, "%s(): acp_responseReadI2List() error where sensor.id = %d\n", __FUNCTION__, s->id);
 #endif
-
-
-            return 0;
-        }
-        s->peer.active = 1;
-        if (tl.item[0].p0 == s->remote_id) {
-            done = 1;
-            break;
-        }
+        return 0;
+    }
+    s->peer.active = 1;
+    if (tl.length != 1) {
+#ifdef MODE_DEBUG
+        fprintf(stderr, "%s(): response: number of items = %d but 1 expected\n", __FUNCTION__, tl.length);
+#endif
+        return 0;
+    }
+    if (tl.item[0].p0 == s->remote_id) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): response:  peer returned id=%d but requested one was %d\n", __FUNCTION__, tl.item[0].p0, s->remote_id);
 #endif
-    }
-    if (!done) {
         return 0;
     }
     s->peer.active = 1;
@@ -945,8 +941,6 @@ int acp_readSensorFTS(SensorFTS *s) {
     struct timespec now = getCurrentTime();
     /*
                 if (!timeHasPassed(s->interval_min, s->last_read_time, now)) {
-                           
-                        
                     return s->last_return;
                 }
      */
@@ -965,8 +959,6 @@ int acp_readSensorFTS(SensorFTS *s) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): acp_requestSendI1List failed where sensor.id = %d and remote_id=%d\n", __FUNCTION__, s->id, s->remote_id);
 #endif
-
-
         return 0;
     }
 
@@ -989,16 +981,12 @@ int acp_readSensorFTS(SensorFTS *s) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): response: number of items = %d but 1 expected\n", __FUNCTION__, tl.length);
 #endif
-
-
         return 0;
     }
     if (tl.item[0].id != s->remote_id) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): response: peer returned id=%d but requested one was %d\n", __FUNCTION__, tl.item[0].id, s->remote_id);
 #endif
-
-
         return 0;
     }
     if (tl.item[0].state != 1) {
@@ -1026,7 +1014,6 @@ int acp_getFTS(FTS *output, Peer *peer, int remote_id) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): send failed where remote_id=%d\n", __FUNCTION__, remote_id);
 #endif
-
         return 0;
     }
 
@@ -1040,7 +1027,6 @@ int acp_getFTS(FTS *output, Peer *peer, int remote_id) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): read failed where remote_id=%d\n", __FUNCTION__, remote_id);
 #endif
-
         return 0;
     }
     peer->active = 1;
@@ -1048,14 +1034,12 @@ int acp_getFTS(FTS *output, Peer *peer, int remote_id) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): response: number of items = %d but 1 expected\n", __FUNCTION__, tl.length != 1);
 #endif
-
         return 0;
     }
     if (tl.item[0].id != remote_id) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): response: peer returned id=%d but requested one was %d\n", __FUNCTION__, tl.item[0].id, remote_id);
 #endif
-
         return 0;
     }
     if (tl.item[0].state != 1) {
@@ -1063,14 +1047,12 @@ int acp_getFTS(FTS *output, Peer *peer, int remote_id) {
         fprintf(stderr, "%s(): response: FTS state is bad where remote_id=%d\n", __FUNCTION__, remote_id);
 #endif
         peer->active = 1;
-
         return 0;
     }
     peer->active = 1;
     *output = tl.item[0];
 
     return 1;
-
 }
 
 void acp_pingPeer(Peer *item) {
@@ -1082,17 +1064,14 @@ void acp_pingPeer(Peer *item) {
 #ifdef MODE_DEBUG
         fprintf(stderr, "%s(): acp_requestSendCmd failed\n", __FUNCTION__);
 #endif
-
         return;
     }
     //waiting for response...
     ACP_RESPONSE_CREATE
     if (!acp_responseRead(&response, item)) {
-
         return;
     }
     if (!acp_responseCheck(&response, &request)) {
-
         return;
     }
     char *b = response.data;
@@ -1111,7 +1090,7 @@ void acp_pingPeer(Peer *item) {
 }
 
 void acp_pingPeerList(PeerList *list, struct timespec interval, struct timespec now) {
-    size_t i;
+    int i;
     FORL{
         if (timeHasPassed(interval, LIi.time1, now)) {
             acp_pingPeer(&LIi);

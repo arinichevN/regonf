@@ -149,6 +149,9 @@ void regpidonfhc_control(RegPIDOnfHC *item) {
                 }
                 controlEM(reg_em, item->output);
                 controlEM(reg_em_other, 0.0f);
+                if(reg_secureNeed(&item->secure_out)){
+                    item->state=REG_SECURE;
+                }
             } else {
                 if (item->snsrf_count > SNSRF_COUNT_MAX) {
                     controlEM(&item->heater, 0.0f);
@@ -167,6 +170,13 @@ void regpidonfhc_control(RegPIDOnfHC *item) {
             }
             break;
         }
+                case REG_SECURE:
+            controlEM(&item->heater, item->secure_out.heater_duty_cycle);
+            controlEM(&item->cooler,item->secure_out.cooler_duty_cycle);
+            if(!reg_secureNeed(&item->secure_out)){
+                item->state=REG_BUSY;
+            }
+            break;
         case REG_DISABLE:
             controlEM(&item->heater, 0.0f);
             controlEM(&item->cooler, 0.0f);
@@ -191,7 +201,7 @@ void regpidonfhc_control(RegPIDOnfHC *item) {
     char *heater_mode = reg_getStateStr(item->heater.mode);
     char *cooler_mode = reg_getStateStr(item->cooler.mode);
     struct timespec tm1 = getTimeRestTmr(item->change_gap, item->tmr);
-    printf("state=%s state_onf=%s EM_state=%s hmode=%s cmode=%s goal=%.1f real=%.1f out=%.1f change_time=%ldsec\n", state, state_onf, state_r,heater_mode, cooler_mode, item->goal, SNSR_VAL, item->output, tm1.tv_sec);
+    printf("state=%s state_onf=%s EM_state=%s mode_h/c=%s/%s goal=%.1f real=%.1f out=%.1f change_time=%ldsec\n", state, state_onf, state_r,heater_mode, cooler_mode, item->goal, SNSR_VAL, item->output, tm1.tv_sec);
 #endif
 }
 
@@ -325,4 +335,8 @@ void regpidonfhc_turnOff(RegPIDOnfHC *item) {
     item->state = REG_OFF;
     controlEM(&item->cooler, 0.0f);
     controlEM(&item->heater, 0.0f);
+}
+
+void regpidonfhc_secureOutTouch(RegOnfHC *item){
+     reg_secureTouch(&item->secure_out);
 }

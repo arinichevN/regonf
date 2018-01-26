@@ -247,6 +247,25 @@ void printData(ACPResponse *response) {
     PROG_LIST_LOOP_SP
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
 
+    SEND_STR("+-----------------------------------------------------------------------------------+\n")
+    SEND_STR("|                               Prog secure                                         |\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("|  prog_id  | secure_id | timeout_s |heater_out |cooler_out |  active   |   done    |\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    PROG_LIST_LOOP_ST
+    snprintf(q, sizeof q, "|%11d|%11d|%11ld|%11f|%11f|%11d|%11d|\n",
+            item->id,
+            item->reg.secure_out.id,
+            item->reg.secure_out.timeout.tv_sec,
+            item->reg.secure_out.heater_duty_cycle,
+            item->reg.secure_out.cooler_duty_cycle,
+            item->reg.secure_out.active,
+            item->reg.secure_out.done
+            );
+    SEND_STR(q)
+    PROG_LIST_LOOP_SP
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+
     acp_sendPeerListInfo(&peer_list, response, &peer_client);
 
     SEND_STR("+-----------------------------------------------------------------------------------------------------------+\n")

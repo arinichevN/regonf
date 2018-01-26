@@ -59,6 +59,11 @@ int getProg_callback(void *d, int argc, char **argv, char **azColName) {
             item->reg.change_gap.tv_nsec = 0;
             item->reg.change_gap.tv_sec = atoi(argv[i]);
             c++;
+        } else if (DB_COLUMN_IS("secure_id")) {
+            if (!reg_getSecureFDB(&item->reg.secure_out, atoi(argv[i]), data->db_data, NULL)) {
+                item->reg.secure_out.active=0;
+            }
+            c++;
         } else if (DB_COLUMN_IS("save")) {
             item->save = atoi(argv[i]);
             c++;
@@ -75,7 +80,7 @@ int getProg_callback(void *d, int argc, char **argv, char **azColName) {
 
         }
     }
-#define N 12
+#define N 13
     if (c != N) {
         fprintf(stderr, "%s(): required %d columns but %d found\n", __FUNCTION__, N, c);
         return EXIT_FAILURE;
@@ -176,6 +181,7 @@ int addProgById(int prog_id, ProgList *list, EMList *em_list, SensorFTSList *sen
         return 0;
     }
     if (!getProgByIdFDB(item->id, item, em_list, sensor_list, db_data, db_data_path)) {
+        freeSocketFd(&item->sock_fd);
         freeMutex(&item->mutex);
         free(item);
         return 0;
@@ -184,16 +190,19 @@ int addProgById(int prog_id, ProgList *list, EMList *em_list, SensorFTSList *sen
     item->reg.heater.em.peer.fd = &item->sock_fd;
     item->reg.cooler.em.peer.fd = &item->sock_fd;
     if (!checkProg(item)) {
+        freeSocketFd(&item->sock_fd);
         freeMutex(&item->mutex);
         free(item);
         return 0;
     }
     if (!addProg(item, list)) {
+        freeSocketFd(&item->sock_fd);
         freeMutex(&item->mutex);
         free(item);
         return 0;
     }
     if (!createMThread(&item->thread, &threadFunction, item)) {
+        freeSocketFd(&item->sock_fd);
         freeMutex(&item->mutex);
         free(item);
         return 0;

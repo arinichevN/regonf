@@ -29,7 +29,7 @@
 #endif
 #define CONFIG_FILE "" CONF_DIR "config.tsv"
 
-#define PROG_FIELDS "id,sensor_id,heater_em_id,em_mode,cooler_em_id,goal,heater_delta,cooler_delta,change_gap,save,enable,load"
+#define PROG_FIELDS "id,sensor_id,heater_em_id,em_mode,cooler_em_id,goal,heater_delta,cooler_delta,change_gap,secure_id,save,enable,load"
 
 #define WAIT_RESP_TIMEOUT 3
 
