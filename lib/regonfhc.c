@@ -13,6 +13,9 @@ void regonfhc_control(RegOnfHC *item) {
     switch (item->state) {
         case REG_INIT:
             if (!acp_readSensorFTS(&item->sensor)) {
+#ifdef MODE_DEBUG
+                puts("reading from sensor failed");
+#endif
                 return;
             }
             item->tmr.ready = 0;
