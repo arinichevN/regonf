@@ -72,7 +72,7 @@ extern void regpidonfhc_setCoolerPower(RegPIDOnfHC *item, float value);
 
 extern void regpidonfhc_turnOff(RegPIDOnfHC *item);
 
-extern void regpidonfhc_secureOutTouch(RegOnfHC *item);
+extern void regpidonfhc_secureOutTouch(RegPIDOnfHC *item);
 
 #endif 
 

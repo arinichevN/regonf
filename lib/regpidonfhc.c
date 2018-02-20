@@ -343,6 +343,6 @@ void regpidonfhc_turnOff(RegPIDOnfHC *item) {
     controlEM(&item->heater, 0.0f);
 }
 
-void regpidonfhc_secureOutTouch(RegOnfHC *item) {
+void regpidonfhc_secureOutTouch(RegPIDOnfHC *item) {
     reg_secureTouch(&item->secure_out);
 }
