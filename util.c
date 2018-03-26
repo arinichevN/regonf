@@ -253,7 +253,7 @@ void printData(ACPResponse *response) {
     SEND_STR("|  prog_id  | secure_id | timeout_s |heater_out |cooler_out |  active   |   done    |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
     PROG_LIST_LOOP_ST
-    snprintf(q, sizeof q, "|%11d|%11d|%11ld|%11f|%11f|%11d|%11d|\n",
+    snprintf(q, sizeof q, "|%11d|%11d|%11ld|%11.3f|%11.3f|%11d|%11d|\n",
             item->id,
             item->reg.secure_out.id,
             item->reg.secure_out.timeout.tv_sec,
@@ -266,6 +266,22 @@ void printData(ACPResponse *response) {
     PROG_LIST_LOOP_SP
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
 
+    SEND_STR("+-----------------------------------------------+\n")
+    SEND_STR("|              Prog green light                 |\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("|  prog_id  |   active  |   value   |green_value|\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+\n")
+    PROG_LIST_LOOP_ST
+    snprintf(q, sizeof q, "|%11d|%11d|%11.3f|%11.3f|\n",
+            item->id,
+            item->reg.green_light.active,
+            item->reg.green_light.sensor.value.value,
+            item->reg.green_light.green_value
+            );
+    SEND_STR(q)
+    PROG_LIST_LOOP_SP
+    SEND_STR("+-----------+-----------+-----------+-----------+\n")
+
     acp_sendPeerListInfo(&peer_list, response, &peer_client);
 
     SEND_STR("+-----------------------------------------------------------------------------------------------------------+\n")
@@ -276,7 +292,7 @@ void printData(ACPResponse *response) {
     SEND_STR("|  prog_id  |     id    | remote_id |  pwm_rsl  |  peer_id  |     id    | remote_id |  pwm_rsl  |  peer_id  |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
     PROG_LIST_LOOP_ST
-    snprintf(q, sizeof q, "|%11d|%11d|%11d|%11f|%11s|%11d|%11d|%11f|%11s|\n",
+    snprintf(q, sizeof q, "|%11d|%11d|%11d|%11.3f|%11s|%11d|%11d|%11.3f|%11s|\n",
             item->id,
 
             item->reg.heater.em.id,
@@ -300,7 +316,7 @@ void printData(ACPResponse *response) {
     SEND_STR("|    id     |    id     | remote_id |  peer_id  |   value   |    sec    |   nsec    | state|\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+------+\n")
     PROG_LIST_LOOP_ST
-    snprintf(q, sizeof q, "|%11d|%11d|%11d|%11s|%11f|%11ld|%11ld|%6d|\n",
+    snprintf(q, sizeof q, "|%11d|%11d|%11d|%11s|%11.3f|%11ld|%11ld|%6d|\n",
             item->id,
             item->reg.sensor.id,
             item->reg.sensor.remote_id,
