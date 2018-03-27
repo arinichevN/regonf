@@ -87,7 +87,7 @@ int getProg_callback(void *d, int argc, char **argv, char **azColName) {
             c++;
         } else {
 #ifdef MODE_DEBUG
-            fprintf(stderr, "%s(): unknown column: %s\n", F, DB_COLUMN_NAME);
+            fprintf(stderr, "%s(): unknown column (we will skip it): %s\n", F, DB_COLUMN_NAME);
 #endif
 
         }
@@ -268,11 +268,10 @@ int loadActiveProg_callback(void *d, int argc, char **argv, char **azColName) {
     for (int i = 0; i < argc; i++) {
         if (DB_COLUMN_IS("id")) {
             int id = atoi(argv[i]);
-            printf("%s: %d\n", F, id);
             addProgById(id, data->prog_list, data->em_list, data->sensor_list, data->db_data, NULL);
         } else {
 #ifdef MODE_DEBUG
-            fprintf(stderr, "%s(): unknown column\n", F);
+            fprintf(stderr, "%s(): unknown column (we will skip it): %s\n", F, DB_COLUMN_NAME);
 #endif
         }
     }
