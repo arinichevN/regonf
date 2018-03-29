@@ -59,13 +59,14 @@ function build_lib {
 	gcc $1 $PLATFORM -c timef.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $PLATFORM -c udp.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $PLATFORM -c util.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
+	gcc $1 $PLATFORM -c tsv.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	gcc $1 $PLATFORM -c regonfhc.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	cd acp && \
 	gcc  $PLATFORM -c main.c -D_REENTRANT $DEBUG_PARAM -lpthread && \
 	cd ../ && \
 	echo "library: making archive..." && \
 	rm -f libpac.a
-	ar -crv libpac.a app.o crc.o dbl.o gpio.o timef.o udp.o util.o configl.o regonfhc.o acp/main.o && echo "library: done"
+	ar -crv libpac.a app.o crc.o dbl.o gpio.o timef.o udp.o util.o tsv.o configl.o regonfhc.o acp/main.o && echo "library: done"
 	rm -f *.o acp/*.o
 }
 

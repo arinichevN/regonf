@@ -10,6 +10,7 @@
 #include "lib/app.h"
 #include "lib/configl.h"
 #include "lib/timef.h"
+#include "lib/tsv.h"
 #include "lib/udp.h"
 #include "lib/regonfhc.h"
 #include "lib/acp/main.h"
