@@ -224,17 +224,17 @@ void printData(ACPResponse *response) {
     SEND_STR(q)
     snprintf(q, sizeof q, "prog_list length: %d\n", list->length);
     SEND_STR(q)
-    SEND_STR("+-----------------------------------------------------------------------------------------------------------------------------------+\n")
-    SEND_STR("|                                                             Program                                                               |\n")
-    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
-    SEND_STR("|    id     |    goal   |  delta_h  |  delta_c  | change_gap|change_rest|   state   |  state_r  | state_onf | out_heater| out_cooler|\n")
-    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("+-----------------------------------------------------------------------------------------------------------------------------------------------+\n")
+    SEND_STR("|                                                                   Program                                                                     |\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("|    id     |    goal   |  delta_h  |  delta_c  | change_gap|change_rest|   state   |  state_r  | state_onf | out_heater| out_cooler| error_code|\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
     PROG_LIST_LOOP_ST
             char *state = reg_getStateStr(item->reg.state);
     char *state_r = reg_getStateStr(item->reg.state_r);
     char *state_onf = reg_getStateStr(item->reg.state_onf);
     struct timespec tm1 = getTimeRestChange(item);
-    snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11s|%11.3f|%11.3f|\n",
+    snprintf(q, sizeof q, "|%11d|%11.3f|%11.3f|%11.3f|%11ld|%11ld|%11s|%11s|%11s|%11.3f|%11.3f|%11u|\n",
             item->id,
             item->reg.goal,
             item->reg.heater.delta,
@@ -245,11 +245,12 @@ void printData(ACPResponse *response) {
             state_r,
             state_onf,
             item->reg.heater.output,
-            item->reg.cooler.output
+            item->reg.cooler.output,
+            item->error_code
             );
     SEND_STR(q)
     PROG_LIST_LOOP_SP
-    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
+    SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
 
     SEND_STR("+-----------------------------------------------------------------------------------+\n")
     SEND_STR("|                               Prog secure                                         |\n")
