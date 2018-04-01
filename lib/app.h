@@ -43,6 +43,12 @@
 #define THREAD_EXIT_ON_CMD if (*cmd) {*cmd = 0;return (EXIT_SUCCESS); }
 #define THREAD_DEF_CMD char *cmd = (char *) arg;
 
+#define PROG_ERROR_NO_SIGNAL_FROM_CLIENT 0x1
+#define PROG_ERROR_NO_RESPONSE_FROM_SENSOR 0x2
+
+#define BIT_ENABLE(buf,v) (buf)|=(v)
+#define BIT_DISABLE(buf,v) (buf)&=~(v)
+
 #define SERVER_HEADER \
     ACPResponse response;ACPRequest request;\
     acp_requestInit(&request);\
@@ -167,6 +173,20 @@ enum {
     APP_EXIT
 } State;
 
+typedef struct {
+    char *buf;
+    size_t *s1_offset;
+    size_t buf_length;
+    size_t buf_max_length;
+    size_t length;
+    size_t max_length;
+} S1BList;
+#define BLIST_ITEM(list,iname, ind)  ((list)->buf+(list)->iname##_offset[ind])
+#define S1BLIST_INITIALIZER {.buf=NULL, .s1_offset=NULL, .buf_length=0, .buf_max_length=0, .length=0, .max_length=0}
+#define FREE_S1BLIST(list) free((list)->s1_offset); free((list)->buf);  (list)->buf=NULL; (list)->s1_offset=NULL; (list)->buf_length=0;(list)->buf_max_length=0;(list)->length=0; (list)->max_length=0;
+#define NULL_S1BLIST(list) memset((list)->buf,0,(list)->buf_max_length * sizeof (*(list)->buf));memset((list)->s1_offset,0,(list)->max_length * sizeof (*(list)->s1_offset));(list)->buf_length=0;(list)->length=0;
+
+extern int s1blist_push(size_t min_buf_alloc_length, size_t min_item_alloc_length, S1BList *list, const char *str);
 
 typedef struct {
     pthread_mutex_t self;

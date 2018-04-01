@@ -201,6 +201,16 @@ void serverRun(int *state, int init_state) {
                 }
             }
         }
+    } else if (ACP_CMD_IS(ACP_CMD_PROG_GET_ERROR)) {
+        PARSE_I1LIST
+        for (int i = 0; i < i1l.length; i++) {
+            Prog *item = getProgById(i1l.item[i], &prog_list);
+            if (item != NULL) {
+                if (!bufCatProgError(item, &response)) {
+                    return;
+                }
+            }
+        }
     } else if (ACP_CMD_IS(ACP_CMD_GET_FTS)) {
         PARSE_I1LIST
         for (int i = 0; i < i1l.length; i++) {

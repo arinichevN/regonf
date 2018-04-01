@@ -46,6 +46,7 @@ struct prog_st {
     int id;
     RegOnfHC reg;
     int save;
+    uint32_t error_code;
     
     int sock_fd;
     struct timespec cycle_duration;

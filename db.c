@@ -185,6 +185,7 @@ int addProgById(int prog_id, ProgList *list, EMList *em_list, SensorFTSList *sen
     item->id = prog_id;
     item->next = NULL;
     item->cycle_duration = cycle_duration;
+    item->error_code=0x0u;
     if (!initMutex(&item->mutex)) {
         free(item);
         return 0;
@@ -204,6 +205,7 @@ int addProgById(int prog_id, ProgList *list, EMList *em_list, SensorFTSList *sen
     item->reg.green_light.sensor.peer.fd = &item->sock_fd;
     item->reg.heater.em.peer.fd = &item->sock_fd;
     item->reg.cooler.em.peer.fd = &item->sock_fd;
+    item->reg.secure_out.error_code=&item->error_code;
     if (!checkProg(item)) {
         freeSocketFd(&item->sock_fd);
         freeMutex(&item->mutex);

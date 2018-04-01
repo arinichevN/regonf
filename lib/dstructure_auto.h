@@ -7,7 +7,7 @@
 #define LIST_INITIALIZER {.item = NULL, .length = 0, .max_length = 0}
 #define LLIST_INITIALIZER {.top = NULL, .last = NULL, .length = 0}
 
-#define NULL_LIST(list) memset((list)->item,0,(list)->max_length * sizeof (*(list)->item));
+#define NULL_LIST(list) memset((list)->item,0,(list)->max_length * sizeof (*(list)->item));(list)->length=0;
 #define RESET_LIST(list) (list)->item=NULL; (list)->length=0; (list)->max_length=0;
 #define FREE_LIST(list) free((list)->item); RESET_LIST(list)
 #define RESIZE_M_LIST(list, new_length)  if((list)->max_length < new_length){(list)->item = realloc((list)->item, new_length * sizeof (*(list)->item));if ((list)->item == NULL) {(list)->max_length=0;(list)->length=0;}else{(list)->max_length=new_length;}}

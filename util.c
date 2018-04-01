@@ -163,6 +163,12 @@ int bufCatProgInit(Prog *item, ACPResponse *response) {
     return 0;
 }
 
+int bufCatProgError(Prog *item, ACPResponse *response) {
+    char q[LINE_SIZE];
+    snprintf(q, sizeof q, "%d" ACP_DELIMITER_COLUMN_STR "%u" ACP_DELIMITER_ROW_STR, item->id, item->error_code);
+    return acp_responseStrCat(response, q);
+}
+
 int bufCatProgGoal(Prog *item, ACPResponse *response) {
     if (lockMutex(&item->mutex)) {
         char q[LINE_SIZE];
@@ -361,6 +367,8 @@ void printHelp(ACPResponse *response) {
     snprintf(q, sizeof q, "%s\tget prog state (1-enabled, 0-disabled); program id expected\n", ACP_CMD_PROG_GET_ENABLED);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tget prog goal; program id expected\n", ACP_CMD_REG_PROG_GET_GOAL);
+    SEND_STR(q)
+    snprintf(q, sizeof q, "%s\tget prog error code; program id expected\n", ACP_CMD_PROG_GET_ERROR);
     SEND_STR(q)
     snprintf(q, sizeof q, "%s\tget prog sensor value; program id expected\n", ACP_CMD_GET_FTS);
     SEND_STR(q)
